@@ -10,6 +10,7 @@ import numpy as np
 import argparse
 from ..processing.bbox_transform import bbox_overlaps
 from ..dataset import *
+import gc
 
 def create_roidb_from_box_list(box_list, gt_roidb):
     """
@@ -62,6 +63,7 @@ def create_roidb_from_box_list(box_list, gt_roidb):
         assert all(roi_rec['max_classes'][nonzero_indexes] != 0)
 
         roidb.append(roi_rec)
+        del roi_rec
     print("create complete")
 
     return roidb
@@ -87,13 +89,14 @@ def rpn_roidb(gt_roidb, rpn_load_roidb, num_images_start, num_images_end, append
     :param append_gt: append ground truth
     :return: roidb of rpn
     """
-    gt_roidb = gt_roidb[num_images_start:num_images_end]
-    rpn_load_roidb = rpn_load_roidb[num_images_start:num_images_end]
-    rpn_load_roidb = create_roidb_from_box_list(rpn_load_roidb, gt_roidb)
+    gt_roidb_split = gt_roidb[num_images_start:num_images_end]
+    rpn_roidb_split = rpn_load_roidb[num_images_start:num_images_end]
+    rpn_roidb_split = create_roidb_from_box_list(rpn_roidb_split, gt_roidb_split)
     if append_gt:
         print('appending ground truth annotations')
-        rpn_load_roidb = merge_roidbs(gt_roidb, rpn_load_roidb)
-    return rpn_load_roidb
+        rpn_roidb_split = merge_roidbs(gt_roidb_split, rpn_roidb_split)
+    del gt_roidb_split
+    return rpn_roidb_split
 
 
 def load_proposal_roidb(dataset_name, image_set_name, root_path, dataset_path,
@@ -116,9 +119,13 @@ def load_proposal_roidb(dataset_name, image_set_name, root_path, dataset_path,
         if flip:
             roidb = imdb.append_flipped_images(roidb)
 
-        cachefile = split + '.pkl'
+        cachefile = str(split) + '.pkl'
+        print("save to cache:", cachefile)
         with open(cachefile, 'w') as f:
             cPickle.dump(roidb, f, protocol=cPickle.HIGHEST_PROTOCOL)
+
+        del roidb
+        gc.collect()
 
 
 def merge_roidbs(a, b):
@@ -146,13 +153,14 @@ def split_roidb(dataset_name, image_set_name, root_path, dataset_path,
 
     rois_all = []
     for split in range(num_split):
-        cachefile = split + '.pkl'
+        cachefile = str(split) + '.pkl'
         with open(cachefile, 'rb') as f:
             box_list = cPickle.load(f)
         rois_all.extend(box_list)
         print("num_images in this split:{}, num_images all:{}".format(len(box_list), len(rois_all)))
 
     rois_all_file = 'imagenet.pkl'
+    print("save all to:",rois_all_file )
     with open(rois_all_file, 'w') as f:
         cPickle.dump(rois_all, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
