@@ -12,9 +12,10 @@ Reference:
 Szegedy, Christian, et al. "Rethinking the Inception Architecture for Computer Vision." arXiv preprint arXiv:1512.00567 (2015).
 """
 
+
 def Conv(data, num_filter, kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=None, suffix=''):
     conv = mx.sym.Convolution(data=data, num_filter=num_filter, kernel=kernel, stride=stride, pad=pad, no_bias=True, name='%s%s_conv2d' %(name, suffix))
-    bn = mx.sym.BatchNorm(data=conv, name='%s%s_batchnorm' %(name, suffix), fix_gamma=True)
+    bn = mx.sym.BatchNorm(data=conv, name='%s%s_batchnorm' %(name, suffix), fix_gamma=True,use_global_stats=True)
     act = mx.sym.Activation(data=bn, act_type='relu', name='%s%s_relu' %(name, suffix))
     return act
 
@@ -42,11 +43,11 @@ def Inception7B(data,
                 num_d3x3_red, num_d3x3_1, num_d3x3_2,
                 pool,
                 name):
-    tower_3x3 = Conv(data, num_3x3, kernel=(3, 3), pad=(0, 0), stride=(2, 2), name=('%s_conv' % name))
+    tower_3x3 = Conv(data, num_3x3, kernel=(3, 3), pad=(1, 1), stride=(2, 2), name=('%s_conv' % name))
     tower_d3x3 = Conv(data, num_d3x3_red, name=('%s_tower' % name), suffix='_conv')
     tower_d3x3 = Conv(tower_d3x3, num_d3x3_1, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name=('%s_tower' % name), suffix='_conv_1')
-    tower_d3x3 = Conv(tower_d3x3, num_d3x3_2, kernel=(3, 3), pad=(0, 0), stride=(2, 2), name=('%s_tower' % name), suffix='_conv_2')
-    pooling = mx.symbol.Pooling(data=data, kernel=(3, 3), stride=(2, 2), pad=(0,0), pool_type="max", name=('max_pool_%s_pool' % name))
+    tower_d3x3 = Conv(tower_d3x3, num_d3x3_2, kernel=(3, 3), pad=(1, 1), stride=(2, 2), name=('%s_tower' % name), suffix='_conv_2')
+    pooling = mx.symbol.Pooling(data=data, kernel=(3, 3), stride=(2, 2), pad=(1,1), pool_type="max", name=('max_pool_%s_pool' % name))
     concat = mx.sym.Concat(*[tower_3x3, tower_d3x3, pooling], name='ch_concat_%s_chconcat' % name)
     return concat
 
@@ -112,14 +113,14 @@ def Inception7E(data,
 def get_inceptionv3_conv(data):
 
     # stage 1
-    conv = Conv(data, 32, kernel=(3, 3), stride=(2, 2), name="conv")
-    conv_1 = Conv(conv, 32, kernel=(3, 3), name="conv_1")
+    conv = Conv(data, 32, pad=(1,1),kernel=(3, 3), stride=(2, 2), name="conv")
+    conv_1 = Conv(conv, 32, pad=(1,1),kernel=(3, 3), name="conv_1")
     conv_2 = Conv(conv_1, 64, kernel=(3, 3), pad=(1, 1), name="conv_2")
-    pool = mx.sym.Pooling(data=conv_2, kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool")
+    pool = mx.sym.Pooling(data=conv_2, pad=(1,1),kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool")
     # stage 2
     conv_3 = Conv(pool, 80, kernel=(1, 1), name="conv_3")
-    conv_4 = Conv(conv_3, 192, kernel=(3, 3), name="conv_4")
-    pool1 = mx.sym.Pooling(data=conv_4, kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool1")
+    conv_4 = Conv(conv_3, 192, pad=(1,1),kernel=(3, 3), name="conv_4")
+    pool1 = mx.sym.Pooling(data=conv_4, pad=(1,1),kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool1")
     # stage 3
     in3a = Inception7A(pool1, 64,
                        64, 96, 96,
@@ -337,6 +338,7 @@ def get_inceptionv3_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_
 
     # classification
     cls_score = mx.symbol.FullyConnected(name='cls_score', data=flatten, num_hidden=num_classes)
+#    cls_prob = mx.symbol.SoftmaxOutput(name='cls_prob', data=cls_score)
     cls_prob = mx.symbol.softmax(name='cls_prob', data=cls_score)
     # bounding box regression
     bbox_pred = mx.symbol.FullyConnected(name='bbox_pred', data=flatten, num_hidden=num_classes * 4)
@@ -384,6 +386,76 @@ def get_inceptionv3_rpn(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_A
     # group output
     group = mx.symbol.Group([cls_prob, bbox_loss])
     return group
+
+
+def get_inceptionv3mutiltask_rpn(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS):
+    data = mx.symbol.Variable(name="data")
+    im_info = mx.symbol.Variable(name="im_info")
+    roi_info = mx.symbol.Variable(name="roi_info")
+    gt_boxes = mx.symbol.Variable(name="gt_boxes")
+    rpn_label = mx.symbol.Variable(name='label')
+    rpn_bbox_target = mx.symbol.Variable(name='bbox_target')
+    rpn_bbox_weight = mx.symbol.Variable(name='bbox_weight')
+    gt_label = mx.symbol.Variable(name='gtlabel')
+
+
+    # shared convolutional layers
+    conv_feat = get_inceptionv3_conv(data)
+
+    # RPN layers
+    rpn_conv = mx.symbol.Convolution(
+        data=conv_feat, kernel=(3, 3), pad=(1, 1), num_filter=512, name="rpn_conv_3x3")
+    rpn_relu = mx.symbol.Activation(data=rpn_conv, act_type="relu", name="rpn_relu")
+    rpn_cls_score = mx.symbol.Convolution(
+        data=rpn_relu, kernel=(1, 1), pad=(0, 0), num_filter=2 * num_anchors, name="rpn_cls_score")
+    rpn_bbox_pred = mx.symbol.Convolution(
+        data=rpn_relu, kernel=(1, 1), pad=(0, 0), num_filter=4 * num_anchors, name="rpn_bbox_pred")
+
+    # prepare rpn data
+    rpn_cls_score_reshape = mx.symbol.Reshape(
+        data=rpn_cls_score, shape=(0, 2, -1, 0), name="rpn_cls_score_reshape")
+
+    # classification
+    cls_prob = mx.symbol.SoftmaxOutput(data=rpn_cls_score_reshape, label=rpn_label, multi_output=True,
+                                           normalization='valid', use_ignore=True, ignore_label=-1, name="rpn_cls_prob")
+    # bounding box regression
+    bbox_loss_ = rpn_bbox_weight * mx.symbol.smooth_l1(name='rpn_bbox_loss_', scalar=3.0, data=(rpn_bbox_pred - rpn_bbox_target))
+    bbox_loss = mx.sym.MakeLoss(name='rpn_bbox_loss', data=bbox_loss_, grad_scale=1.0 / config.TRAIN.RPN_BATCH_SIZE)
+
+    # add cls error
+#    roi_info_reshape = mx.symbol.Reshape(data = roi_info,shape=(-1,5),name= "roi_reshape")
+    conv_feat_roi = mx.symbol.ROIPooling(
+        name='roi_pool', data=conv_feat, rois=roi_info, pooled_size=(17, 17), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
+
+    # res5
+    in4e = Inception7D(conv_feat_roi, 192, 320,
+                       192, 192, 192, 192,
+                       "max", "mixed_8")
+
+    # stage 5
+    in5a = Inception7E(in4e, 320,
+                       384, 384, 384,
+                       448, 384, 384, 384,
+                       "avg", 192, "mixed_9")
+    in5b = Inception7E(in5a, 320,
+                       384, 384, 384,
+                       448, 384, 384, 384,
+                       "max", 192, "mixed_10")
+    # pool
+    pool1 = mx.sym.Pooling(data=in5b, kernel=(8, 8), stride=(1, 1), pool_type="avg", name="global_pool")
+    flatten = mx.sym.Flatten(data=pool1, name="flatten")
+
+    #conv_feat_grid = mx.sym.Variable(name ='roidata', shape=(2,2,27,27))
+    #grid = mx.sym.GridGenerator(data=conv_feat_grid,transform_type="warp")
+    #print(grid)
+    #conv_feat_roi = mx.symbol.BilinearSampler(conv_feat,grid)
+    cls_score = mx.symbol.FullyConnected(name='cls_score', data=flatten, num_hidden=num_classes)
+    cls_prob_class = mx.symbol.SoftmaxOutput(name='cls_prob',grad_scale=0.01, data=cls_score, label=gt_label, normalization='batch')
+    # group output
+    group = mx.symbol.Group([cls_prob, bbox_loss, cls_prob_class])
+    return group
+
+
 
 def get_inceptionv3_rpn_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS):
     data = mx.symbol.Variable(name="data")

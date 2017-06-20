@@ -75,6 +75,7 @@ def train_rcnn(network, dataset, image_set, root_path, dataset_path,
         arg_params['cls_score_bias'] = mx.nd.zeros(shape=arg_shape_dict['cls_score_bias'])
         arg_params['bbox_pred_weight'] = mx.random.normal(0, 0.001, shape=arg_shape_dict['bbox_pred_weight'])
         arg_params['bbox_pred_bias'] = mx.nd.zeros(shape=arg_shape_dict['bbox_pred_bias'])
+
     if use_global_context:
         # additional params for using global context
         """
