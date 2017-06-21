@@ -69,7 +69,8 @@ def get_rcnn_batch(roidb, use_data_augmentation=False):
         roi_rec = roidb[im_i]
 
         # infer num_classes from gt_overlaps
-        num_classes = roi_rec['gt_overlaps'].shape[1]
+        #num_classes = roi_rec['gt_overlaps'].shape[1]
+        num_classes = config.NUM_CLASSES
 
         # label = class RoI has max overlap with
         rois = roi_rec['boxes']

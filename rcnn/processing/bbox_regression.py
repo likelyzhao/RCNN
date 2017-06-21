@@ -57,7 +57,8 @@ def add_bbox_regression_targets(roidb):
     assert 'max_classes' in roidb[0]
 
     num_images = len(roidb)
-    num_classes = roidb[0]['gt_overlaps'].shape[1]
+    #num_classes = roidb[0]['gt_overlaps'].shape[1]
+    num_classes= config.NUM_CLASSES
     for im_i in range(num_images):
         rois = roidb[im_i]['boxes']
         max_overlaps = roidb[im_i]['max_overlaps']

@@ -133,7 +133,7 @@ class IMDB(object):
 
             roi_rec.update({'boxes': boxes,
                             'gt_classes': np.zeros((num_boxes,), dtype=np.int32),
-                            'gt_overlaps': overlaps,
+                            #'gt_overlaps': overlaps,
                             'max_classes': overlaps.argmax(axis=1),
                             'max_overlaps': overlaps.max(axis=1),
                             'flipped': False})
@@ -171,7 +171,7 @@ class IMDB(object):
                      'width': roi_rec['width'],
                      'boxes': boxes,
                      'gt_classes': roidb[i]['gt_classes'],
-                     'gt_overlaps': roidb[i]['gt_overlaps'],
+                     #'gt_overlaps': roidb[i]['gt_overlaps'],
                      'max_classes': roidb[i]['max_classes'],
                      'max_overlaps': roidb[i]['max_overlaps'],
                      'flipped': True}
@@ -288,7 +288,7 @@ class IMDB(object):
         for i in range(len(a)):
             a[i]['boxes'] = np.vstack((a[i]['boxes'], b[i]['boxes']))
             a[i]['gt_classes'] = np.hstack((a[i]['gt_classes'], b[i]['gt_classes']))
-            a[i]['gt_overlaps'] = np.vstack((a[i]['gt_overlaps'], b[i]['gt_overlaps']))
+            #a[i]['gt_overlaps'] = np.vstack((a[i]['gt_overlaps'], b[i]['gt_overlaps']))
             a[i]['max_classes'] = np.hstack((a[i]['max_classes'], b[i]['max_classes']))
             a[i]['max_overlaps'] = np.hstack((a[i]['max_overlaps'], b[i]['max_overlaps']))
         return a
