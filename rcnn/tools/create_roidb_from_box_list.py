@@ -11,7 +11,10 @@ import argparse
 from ..processing.bbox_transform import bbox_overlaps
 from ..dataset import *
 import gc
+from memory_profiler import profile
+from multiprocessing import Process
 
+#@profile(precision=4)
 def create_roidb_from_box_list(box_list, gt_roidb):
     """
     given ground truth, prepare roidb
@@ -23,7 +26,7 @@ def create_roidb_from_box_list(box_list, gt_roidb):
     num_classes = 201
     assert len(box_list) == num_images, 'number of boxes matrix must match number of images'
     roidb = []
-    for i in range(num_images):
+    for i in xrange(num_images):
         print("create roidb from box list:", i)
         roi_rec = dict()
         roi_rec['image'] = gt_roidb[i]['image']
@@ -45,6 +48,7 @@ def create_roidb_from_box_list(box_list, gt_roidb):
             # for each box in n boxes, select only maximum overlap (must be greater than zero)
             argmaxes = gt_overlaps.argmax(axis=1)
             maxes = gt_overlaps.max(axis=1)
+            #del gt_overlaps
             I = np.where(maxes > 0)[0]
             overlaps[I, gt_classes[argmaxes[I]]] = maxes[I]
 
@@ -63,7 +67,8 @@ def create_roidb_from_box_list(box_list, gt_roidb):
         assert all(roi_rec['max_classes'][nonzero_indexes] != 0)
 
         roidb.append(roi_rec)
-        del roi_rec
+        #del overlaps
+        #gc.collect()
     print("create complete")
 
     return roidb
@@ -96,6 +101,7 @@ def rpn_roidb(gt_roidb, rpn_load_roidb, num_images_start, num_images_end, append
         print('appending ground truth annotations')
         rpn_roidb_split = merge_roidbs(gt_roidb_split, rpn_roidb_split)
     del gt_roidb_split
+    gc.collect()
     return rpn_roidb_split
 
 
@@ -107,25 +113,31 @@ def load_proposal_roidb(dataset_name, image_set_name, root_path, dataset_path,
     rpn_load_roidb = load_rpn_data(root_path, dataset_name)
     num_images = len(gt_roidb)
 
-    for split in range(num_split):
-        num_images_start = num_images / num_split * split
-        if split == num_split - 1:
-            num_images_end = num_images
-        else:
-            num_images_end = num_images / num_split * (split + 1)
+    for split in xrange(num_split):
+        p = Process(target=func, args=(num_images, num_split, split, proposal, gt_roidb, rpn_load_roidb, append_gt, flip))
+        p.start()
+        p.join()
 
-        roidb = eval(proposal + '_roidb')(gt_roidb, rpn_load_roidb, num_images_start, num_images_end, append_gt)
 
-        if flip:
-            roidb = imdb.append_flipped_images(roidb)
+def func(num_images, num_split, split, proposal, gt_roidb, rpn_load_roidb, append_gt, flip):
+    num_images_start = num_images / num_split * split
+    if split == num_split - 1:
+        num_images_end = num_images
+    else:
+        num_images_end = num_images / num_split * (split + 1)
 
-        cachefile = str(split) + '.pkl'
-        print("save to cache:", cachefile)
-        with open(cachefile, 'w') as f:
-            cPickle.dump(roidb, f, protocol=cPickle.HIGHEST_PROTOCOL)
+    roidb = eval(proposal + '_roidb')(gt_roidb, rpn_load_roidb, num_images_start, num_images_end, append_gt)
 
-        del roidb
-        gc.collect()
+    if flip:
+        roidb = imdb.append_flipped_images(roidb)
+
+    cachefile = str(split) + '.pkl'
+    print("save to cache:", cachefile)
+    with open(cachefile, 'w') as f:
+        cPickle.dump(roidb, f, protocol=cPickle.HIGHEST_PROTOCOL)
+
+    #del roidb
+    #gc.collect()
 
 
 def merge_roidbs(a, b):
@@ -136,7 +148,7 @@ def merge_roidbs(a, b):
     :return: merged imdb
     """
     assert len(a) == len(b)
-    for i in range(len(a)):
+    for i in xrange(len(a)):
         a[i]['boxes'] = np.vstack((a[i]['boxes'], b[i]['boxes']))
         a[i]['gt_classes'] = np.hstack((a[i]['gt_classes'], b[i]['gt_classes']))
         a[i]['gt_overlaps'] = np.vstack((a[i]['gt_overlaps'], b[i]['gt_overlaps']))
@@ -152,7 +164,7 @@ def split_roidb(dataset_name, image_set_name, root_path, dataset_path,
                         num_split=num_split, proposal='rpn', append_gt=True, flip=False)
 
     rois_all = []
-    for split in range(num_split):
+    for split in xrange(num_split):
         cachefile = str(split) + '.pkl'
         with open(cachefile, 'rb') as f:
             box_list = cPickle.load(f)
@@ -172,13 +184,14 @@ def parse_args():
     parser.add_argument('--root_path', help='output data folder', default='data', type=str)
     parser.add_argument('--dataset_path', help='dataset path', default='data/imagenet', type=str)
     parser.add_argument('--proposal', help='proposal method',default='rpn', type=str)
-    parser.add_argument('--append_gt', help='append gt or not',action='store_false')
-    parser.add_argument('--flip', help='flip or not',action='store_false')
+    parser.add_argument('--append_gt', help='append gt or not',action='store_true')
+    parser.add_argument('--flip', help='flip or not',action='store_true')
     parser.add_argument('--num_split', help='num of split to merge',default=10, type=int)
 
     args = parser.parse_args()
     return args
 
+#@profile(precision=4)
 def main():
     args = parse_args()
     print(args)
@@ -187,4 +200,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
