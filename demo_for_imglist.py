@@ -176,8 +176,9 @@ def demo_net(predictor, dataset, image_set,
             im = draw_all_detection(data_dict['data'].asnumpy(), boxes_this_image, CLASSES, im_scale)
             im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
             cv2.imwrite(result_file, im)
-
-    assert len(all_boxes) == num_images, 'calculations not complete'
+    
+    print("num of images: detection:{}, gt:{}".format(len(all_boxes[0]), num_images))
+    # assert len(all_boxes) == num_images, 'calculations not complete'
 
     # save results
     cache_folder = os.path.join(root_path, 'cache')
@@ -185,6 +186,7 @@ def demo_net(predictor, dataset, image_set,
         os.mkdir(cache_folder)
 
     cache_file = os.path.join(cache_folder, dataset + '_' + image_set + '_detections.pkl')
+    print("save to {}".format(cache_file))
     with open(cache_file, 'wb') as f:
         cPickle.dump(all_boxes, f, cPickle.HIGHEST_PROTOCOL)
 
