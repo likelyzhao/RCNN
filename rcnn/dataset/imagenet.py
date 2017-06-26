@@ -207,7 +207,7 @@ class imagenet(IMDB):
 
         roi_rec.update({'boxes': boxes,
                         'gt_classes': gt_classes,
-                        'gt_overlaps': overlaps,
+                        #'gt_overlaps': overlaps,
                         'max_classes': overlaps.argmax(axis=1),
                         'max_overlaps': overlaps.max(axis=1),
                         'flipped': False})
