@@ -18,24 +18,32 @@ class ROIGlobalContextOperator(mx.operator.CustomOp):
         im_info = in_data[1].copy()   # im_info=(height,width)
         #im_info = mx.ndarray.slice_axis(im_info, axis=0, begin=0, end=1)
         if DEBUG:
-            print('im_info:',im_info.asnumpy())
+            print('im_info:{},rois_shape:{}'.format(im_info.asnumpy(), x.shape))
         y = out_data[0]
-        for idx, roi in enumerate(x):
-            roi_ctr_x = 0.5 * (roi[1] + roi[3])  # (x1+x2)/2
-            roi_ctr_y = 0.5 * (roi[2] + roi[4])  # (y1+y2)/2
-            roi_w_half = roi_ctr_x - roi[1]
-            roi_h_half = roi_ctr_y - roi[2]
-            roi_w_half_new = self._global_context_scale * roi_w_half
-            roi_h_half_new = self._global_context_scale * roi_h_half
 
-            y[idx][0] = x[idx][0]  # cls
-            y[idx][1] = roi_ctr_x - roi_w_half_new  # x1
-            y[idx][2] = roi_ctr_y - roi_h_half_new  # y1
-            y[idx][3] = roi_ctr_x + roi_w_half_new  # x2
-            y[idx][4] = roi_ctr_y + roi_h_half_new  # y2
-            y[idx] = self.clip_boxes(y[idx], im_info)
-            if DEBUG:
-                print('y[{}]:{}'.format(idx, y[idx].asnumpy()))
+        rois_cls = mx.ndarray.slice_axis(x, axis = 1, begin=0, end=1)
+        rois_x1 = mx.ndarray.slice_axis(x, axis = 1, begin=1, end=2)
+        rois_x2 = mx.ndarray.slice_axis(x, axis = 1, begin=3, end=4)
+        rois_y1 = mx.ndarray.slice_axis(x, axis = 1, begin=2, end=3)
+        rois_y2 = mx.ndarray.slice_axis(x, axis = 1, begin=4, end=5)
+
+        rois_ctr_x = 0.5 * (rois_x1 + rois_x2)
+        rois_ctr_y = 0.5 * (rois_y1 + rois_y2)
+        rois_w_half = rois_ctr_x - rois_x1
+        rois_h_half = rois_ctr_y - rois_y1
+        rois_w_half_new = self._global_context_scale * rois_w_half
+        rois_h_half_new = self._global_context_scale * rois_h_half
+
+        y[:,0] = rois_cls
+        y[:,1] = rois_ctr_x - rois_w_half_new
+        y[:,2] = rois_ctr_y - rois_h_half_new
+        y[:,3] = rois_ctr_x + rois_w_half_new
+        y[:,4] = rois_ctr_y + rois_h_half_new
+        y = self.clip_boxes(y, im_info)
+        if DEBUG:
+            print('y.shape:',y.shape)
+
+
 
     def backward(self, req, out_grad, in_data, out_data, in_grad, aux):
         self.assign(in_grad[0], req[0], 0)
@@ -49,15 +57,22 @@ class ROIGlobalContextOperator(mx.operator.CustomOp):
         :param im_shape: tuple of 2
         :return: [1, 5]
         """
+        im_shape = im_shape[0]
+        rois_x1 = mx.ndarray.slice_axis(box, axis=1, begin=1, end=2)
+        rois_x2 = mx.ndarray.slice_axis(box, axis=1, begin=3, end=4)
+        rois_y1 = mx.ndarray.slice_axis(box, axis=1, begin=2, end=3)
+        rois_y2 = mx.ndarray.slice_axis(box, axis=1, begin=4, end=5)
         # x1 >= 0
-        box[1] = mx.nd.maximum(mx.nd.minimum(box[1], im_shape[0][1] - 1), 0)
+        box[:,1] = mx.nd.maximum(mx.nd.minimum(rois_x1, im_shape[1] - 1), 0)
         # y1 >= 0
-        box[2] = mx.nd.maximum(mx.nd.minimum(box[2], im_shape[0][0] - 1), 0)
+        box[:,2] = mx.nd.maximum(mx.nd.minimum(rois_y1, im_shape[0] - 1), 0)
         # x2 < im_shape[1]
-        box[3] = mx.nd.maximum(mx.nd.minimum(box[3], im_shape[0][1] - 1), 0)
+        box[:,3] = mx.nd.maximum(mx.nd.minimum(rois_x2, im_shape[1] - 1), 0)
         # y2 < im_shape[0]
-        box[4] = mx.nd.maximum(mx.nd.minimum(box[4], im_shape[0][0] - 1), 0)
+        box[:,4] = mx.nd.maximum(mx.nd.minimum(rois_y2, im_shape[0] - 1), 0)
         return box
+
+
 
 
 @mx.operator.register('roi_global_context')

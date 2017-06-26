@@ -29,9 +29,12 @@ def train_rcnn(network, dataset, image_set, root_path, dataset_path,
         config.TRAIN.BG_THRESH_LO = 0.1  # reproduce Fast R-CNN
 
     # load symbol
-    sym = eval('get_' + network + '_rcnn')(num_classes=config.NUM_CLASSES,
-                                           use_global_context=use_global_context,
-                                           use_roi_align=use_roi_align)
+    if use_roi_align or use_global_context:
+        sym = eval('get_' + network + '_rcnn')(num_classes=config.NUM_CLASSES,
+                                               use_global_context=use_global_context,
+                                               use_roi_align=use_roi_align)
+    else:
+        sym = eval('get_' + network + '_rcnn')(num_classes=config.NUM_CLASSES)
 
     # setup multi-gpu
     batch_size = len(ctx)
