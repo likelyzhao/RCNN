@@ -14,6 +14,7 @@ config.FIXED_PARAMS_SHARED = ['conv1', 'conv2', 'conv3', 'conv4', 'conv5']
 # dataset related params
 config.NUM_CLASSES = 21
 config.SCALES = [(600, 1000)]  # first is scale (the shorter side); second is max size
+#config.ANCHOR_SCALES = (16,)  # set when training fpn
 config.ANCHOR_SCALES = (8, 16, 32)
 config.ANCHOR_RATIOS = (0.5, 1, 2)
 config.NUM_ANCHORS = len(config.ANCHOR_SCALES) * len(config.ANCHOR_RATIOS)
@@ -22,9 +23,10 @@ config.TRAIN = edict()
 
 # R-CNN and RPN
 # size of images for each device, 2 for rcnn, 1 for rpn and e2e
-config.TRAIN.BATCH_IMAGES = 2
+config.TRAIN.BATCH_IMAGES = 1
 # e2e changes behavior of anchor loader and metric
-config.TRAIN.END2END = False
+#config.TRAIN.END2END = False
+config.TRAIN.END2END = True
 # group images with similar aspect ratio
 config.TRAIN.ASPECT_GROUPING = True
 
@@ -54,7 +56,7 @@ config.TRAIN.RPN_POSITIVE_WEIGHT = -1.0
 
 # used for end2end training
 # RPN proposal
-config.TRAIN.CXX_PROPOSAL = True
+config.TRAIN.CXX_PROPOSAL = False
 config.TRAIN.RPN_NMS_THRESH = 0.7
 config.TRAIN.RPN_PRE_NMS_TOP_N = 12000
 config.TRAIN.RPN_POST_NMS_TOP_N = 2000
@@ -63,6 +65,7 @@ config.TRAIN.RPN_MIN_SIZE = config.RPN_FEAT_STRIDE
 config.TRAIN.BBOX_NORMALIZATION_PRECOMPUTED = False
 config.TRAIN.BBOX_MEANS = (0.0, 0.0, 0.0, 0.0)
 config.TRAIN.BBOX_STDS = (0.1, 0.1, 0.2, 0.2)
+config.fpn_scales =4
 
 config.TEST = edict()
 
@@ -106,7 +109,7 @@ default.root_path = 'data'
 default.dataset_path = 'data/VOCdevkit'
 # default training
 default.frequent = 20
-default.kvstore = 'local'
+default.kvstore = 'device'
 # default e2e
 default.e2e_prefix = 'model/e2e'
 default.e2e_epoch = 10
@@ -138,6 +141,17 @@ network.resnet.RCNN_FEAT_STRIDE = 16
 network.resnet.FIXED_PARAMS = ['conv0', 'stage1', 'gamma', 'beta']
 network.resnet.FIXED_PARAMS_SHARED = ['conv0', 'stage1', 'stage2', 'stage3', 'gamma', 'beta']
 
+network.resnet_fpn = edict()
+
+network.resnet_fpn = edict()
+network.resnet_fpn.pretrained = 'model/resnet-101'
+network.resnet_fpn.pretrained_epoch = 0
+network.resnet_fpn.PIXEL_MEANS = np.array([0, 0, 0])
+network.resnet_fpn.IMAGE_STRIDE = 32
+network.resnet_fpn.RPN_FEAT_STRIDE = [4,8,16,32]
+network.resnet_fpn.RCNN_FEAT_STRIDE = [4,8,16,32]
+network.resnet_fpn.FIXED_PARAMS = ['conv0', 'stage1', 'gamma', 'beta']
+network.resnet_fpn.FIXED_PARAMS_SHARED = ['conv0', 'stage1', 'stage2', 'stage3', 'gamma', 'beta']
 
 network.resnet152 = edict()
 network.resnet152.pretrained = 'model/resnet-152'
@@ -148,7 +162,6 @@ network.resnet152.RPN_FEAT_STRIDE = 16
 network.resnet152.RCNN_FEAT_STRIDE = 16
 network.resnet152.FIXED_PARAMS = ['conv0', 'stage1', 'gamma', 'beta']
 network.resnet152.FIXED_PARAMS_SHARED = ['conv0', 'stage1', 'stage2', 'stage3', 'gamma', 'beta']
-
 
 network.inceptionresnet = edict()
 network.inceptionresnet.pretrained = 'model/inceptionresnet'
@@ -162,14 +175,15 @@ network.inceptionresnet.FIXED_PARAMS_SHARED = ['conv2', 'conv1', 'conv3', 'conv4
 
 
 network.inceptionv3 = edict()
-network.inceptionv3.pretrained = 'model/inceptionresnet'
+network.inceptionv3.pretrained = 'model/inceptionv3'
 network.inceptionv3.pretrained_epoch = 0
 #network.inceptionresnet.PIXEL_MEANS = np.array([0, 0, 0])
 network.inceptionv3.IMAGE_STRIDE = 0
 network.inceptionv3.RPN_FEAT_STRIDE = 16
 network.inceptionv3.RCNN_FEAT_STRIDE = 16
-network.inceptionv3.FIXED_PARAMS = ['conv','conv_1', 'conv_2',"conv_3"]
-network.inceptionv3.FIXED_PARAMS_SHARED = ['conv2', 'conv1', 'conv3', 'conv4', 'conv5', 'beta']
+network.inceptionv3.FIXED_PARAMS = ["conv_batchnorm","conv_2_batchnorm","conv_3_batchnorm","conv_4_batchnorm"]
+network.inceptionv3.FIXED_PARAMS_SHARED = ['conv2', 'conv1', 'conv3', 'conv4', 'conv5', 'beta',"batchnorm"]
+
 
 
 # dataset settings
@@ -202,7 +216,8 @@ dataset.imagenet_loc_2017.root_path = 'data/imagenet_loc_2017'
 dataset.imagenet_loc_2017.dataset_path = 'ILSVRC'
 dataset.imagenet_loc_2017.NUM_CLASSES = 1001
 
-
+dataset.imagenet_loc_val_2017 = edict()
+dataset.imagenet_loc_val_2017.NUM_CLASSES = 1001
 
 def generate_config(_network, _dataset):
     for k, v in network[_network].items():
@@ -215,12 +230,4 @@ def generate_config(_network, _dataset):
             config[k] = v
         elif k in default:
             default[k] = v
-
-def generate_config_dataset(_dataset):
-    for k, v in dataset[_dataset].items():
-        if k in config:
-            config[k] = v
-        elif k in default:
-            default[k] = v
-
 

@@ -145,7 +145,8 @@ def assign_anchor(feat_shape, gt_boxes, im_info, feat_stride=16,
     labels = np.empty((len(inds_inside),), dtype=np.float32)
     labels.fill(-1)
 
-    if gt_boxes.size > 0:
+  #  if gt_boxes.size > 0:
+    if gt_boxes.size > 0 and anchors.size >0 :
         # overlap between the anchors and the gt boxes
         # overlaps (ex, gt)
         overlaps = bbox_overlaps(anchors.astype(np.float), gt_boxes.astype(np.float))
@@ -190,7 +191,8 @@ def assign_anchor(feat_shape, gt_boxes, im_info, feat_stride=16,
         labels[disable_inds] = -1
 
     bbox_targets = np.zeros((len(inds_inside), 4), dtype=np.float32)
-    if gt_boxes.size > 0:
+#    if gt_boxes.size > 0:
+    if gt_boxes.size > 0 and anchors.size >0:
         bbox_targets[:] = bbox_transform(anchors, gt_boxes[argmax_overlaps, :4])
 
     bbox_weights = np.zeros((len(inds_inside), 4), dtype=np.float32)

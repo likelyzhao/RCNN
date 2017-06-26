@@ -265,6 +265,7 @@ class PascalVOC(IMDB):
         print('Mean AP = {:.4f}'.format(np.mean(aps)))
         draw_ap(aps, ars, nobs, self.classes[1:], range_name='all', tag='map = {:.4f}'.format(np.mean(aps)))
 
+
     def do_python_eval_detailed(self):
         """
         python evaluation wrapper
@@ -343,7 +344,6 @@ class PascalVOC(IMDB):
         draw_map(log_aspect_ratio_map, log_aspect_ratio_names, tag='log_aspect_ratio')
         print('map for ratio all:', log_aspect_ratio_map)
 
-
     def get_ranges(self, start, end, step):
         v = np.arange(start, end, step)
         v = np.insert(v, 0, -1e5)
@@ -351,9 +351,9 @@ class PascalVOC(IMDB):
 
         ranges = []
         range_names = []
-        for idx in range(len(v)-1):
+        for idx in range(len(v) - 1):
             range_start = v[idx]
-            range_end = v[idx+1]
+            range_end = v[idx + 1]
             # if start/end is very close to zero, set it to zero
             if range_start > -1e-10 and range_start < 1e-10:
                 range_start = 0
