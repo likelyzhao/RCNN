@@ -25,13 +25,20 @@ def test_rcnn(network, dataset, image_set, root_path, dataset_path,
 
     # load symbol and testing data
     if has_rpn:
-        sym = eval('get_' + network + '_test')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS,
-                                               use_global_context=use_global_context, use_roi_align=use_roi_align)
+        if use_global_context or use_roi_align:
+            sym = eval('get_' + network + '_test')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS,
+                                                   use_global_context=use_global_context, use_roi_align=use_roi_align)
+        else:
+            sym = eval('get_' + network + '_test')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS)
         imdb = eval(dataset)(image_set, root_path, dataset_path)
         roidb = imdb.gt_roidb()
     else:
-        sym = eval('get_' + network + '_rcnn_test')(num_classes=config.NUM_CLASSES,
-                                                    use_global_context=use_global_context, use_roi_align=use_roi_align)
+        if use_global_context or use_roi_align:
+            sym = eval('get_' + network + '_rcnn_test')(num_classes=config.NUM_CLASSES,
+                                                        use_global_context=use_global_context, use_roi_align=use_roi_align)
+        else:
+            sym = eval('get_' + network + '_rcnn_test')(num_classes=config.NUM_CLASSES)
+
         imdb = eval(dataset)(image_set, root_path, dataset_path)
         gt_roidb = imdb.gt_roidb()
         roidb = eval('imdb.' + proposal + '_roidb')(gt_roidb)

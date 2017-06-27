@@ -467,6 +467,7 @@ def get_resnet_rcnn(num_classes=config.NUM_CLASSES, use_global_context=False, us
     :return: Symbol
     """
     data = mx.symbol.Variable(name="data")
+    im_info = mx.symbol.Variable(name="im_info")
     rois = mx.symbol.Variable(name='rois')
     label = mx.symbol.Variable(name='label')
     bbox_target = mx.symbol.Variable(name='bbox_target')

@@ -29,11 +29,10 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
 
     # load symbol
 
-
     if args.use_global_context or args.use_roi_align:
-        sym = eval('get_' + args.network + '_rcnn')(num_classes=config.NUM_CLASSES,
-                                           use_global_context=args.use_global_context,
-                                           use_roi_align=args.use_roi_align)
+        sym = eval('get_' + args.network + '_train')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS,
+                                                     use_global_context=args.use_global_context,
+                                                     use_roi_align=args.use_roi_align)
     else:
         sym = eval('get_' + args.network + '_train')(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_ANCHORS)
 
