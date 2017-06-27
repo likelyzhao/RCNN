@@ -415,25 +415,38 @@ class AnchorLoaderFPN(mx.io.DataIter):
         for key in self.data_name:
             all_data[key] = tensor_vstack([batch[key] for batch in data_list])
 
-
-#        print(len(new_label_list))
         all_label = dict()
+#        for batch in new_label_list:
+        all_label['labelp2'] = tensor_vstack([batch[0]['label'] for batch in new_label_list]) 
+        all_label['labelp3'] = tensor_vstack([batch[1]['label'] for batch in new_label_list]) 
+        all_label['labelp4'] = tensor_vstack([batch[2]['label'] for batch in new_label_list]) 
+        all_label['labelp5'] = tensor_vstack([batch[3]['label'] for batch in new_label_list])
 
-        all_label['labelp2'] = new_label_list[0][0]['label'] 
-        all_label['labelp3'] = new_label_list[0][1]['label'] 
-        all_label['labelp4'] = new_label_list[0][2]['label'] 
-        all_label['labelp5'] = new_label_list[0][3]['label'] 
+        all_label['bbox_targetp2'] = tensor_vstack([batch[0]['bbox_target'] for batch in new_label_list]) 
+        all_label['bbox_targetp3'] = tensor_vstack([batch[1]['bbox_target'] for batch in new_label_list]) 
+        all_label['bbox_targetp4'] = tensor_vstack([batch[2]['bbox_target'] for batch in new_label_list]) 
+        all_label['bbox_targetp5'] = tensor_vstack([batch[3]['bbox_target'] for batch in new_label_list])  
+
+        all_label['bbox_weightp2'] = tensor_vstack([batch[0]['bbox_weight'] for batch in new_label_list])
+        all_label['bbox_weightp3'] = tensor_vstack([batch[1]['bbox_weight'] for batch in new_label_list])
+        all_label['bbox_weightp4'] = tensor_vstack([batch[2]['bbox_weight'] for batch in new_label_list])
+        all_label['bbox_weightp5'] = tensor_vstack([batch[3]['bbox_weight'] for batch in new_label_list])
+ 
         #for key in self.label_name:
-        all_label['bbox_targetp2'] = new_label_list[0][0]['bbox_target'] 
-        all_label['bbox_targetp3'] = new_label_list[0][1]['bbox_target'] 
-        all_label['bbox_targetp4'] = new_label_list[0][2]['bbox_target'] 
-        all_label['bbox_targetp5'] = new_label_list[0][3]['bbox_target'] 
+ #       all_label['labelp3'] = new_label_list[0][1]['label'] 
+ #       all_label['labelp4'] = new_label_list[0][2]['label'] 
+ #       all_label['labelp5'] = new_label_list[0][3]['label'] 
+        #for key in self.label_name:
+ #       all_label['bbox_targetp2'] = new_label_list[0][0]['bbox_target'] 
+  #      all_label['bbox_targetp3'] = new_label_list[0][1]['bbox_target'] 
+  #      all_label['bbox_targetp4'] = new_label_list[0][2]['bbox_target'] 
+#        all_label['bbox_targetp5'] = new_label_list[0][3]['bbox_target'] 
         #for key in self.label_name:
         #    pad = -1 if key == 'label' else 0
-        all_label['bbox_weightp2'] = new_label_list[0][0]['bbox_weight'] 
-        all_label['bbox_weightp3'] = new_label_list[0][1]['bbox_weight'] 
-        all_label['bbox_weightp4'] = new_label_list[0][2]['bbox_weight'] 
-        all_label['bbox_weightp5'] = new_label_list[0][3]['bbox_weight'] 
+#        all_label['bbox_weightp2'] = new_label_list[0][0]['bbox_weight'] 
+#        all_label['bbox_weightp3'] = new_label_list[0][1]['bbox_weight'] 
+#        all_label['bbox_weightp4'] = new_label_list[0][2]['bbox_weight'] 
+#        all_label['bbox_weightp5'] = new_label_list[0][3]['bbox_weight'] 
         #for key in self.label_name:
         #    all_label[key] = [batch[key] for batch in new_label_list]
 
