@@ -207,7 +207,8 @@ def pred_eval(predictor, test_data, imdb, vis=False, thresh=1e-3,
     with open(det_file, 'wb') as f:
         cPickle.dump(all_boxes, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
-    imdb.evaluate_detections(all_boxes, detailed=detailed_analysis)
+#    imdb.evaluate_detections(all_boxes, detailed=detailed_analysis)
+    imdb.evaluate_detections(all_boxes)
     return all_boxes
 
 

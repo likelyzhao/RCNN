@@ -15,7 +15,7 @@ Szegedy, Christian, et al. "Rethinking the Inception Architecture for Computer V
 
 def Conv(data, num_filter, dilate =(1,1), kernel=(1, 1), stride=(1, 1), pad=(0, 0), name=None, suffix=''):
     conv = mx.sym.Convolution(data=data, num_filter=num_filter,dilate=dilate, kernel=kernel, stride=stride, pad=pad, no_bias=True, name='%s' %(name))
-    act = mx.sym.Activation(data=conv, act_type='relu', name='%s_relu' %(name, suffix))
+    act = mx.sym.Activation(data=conv, act_type='relu', name='%s_relu' %(name))
     return act
 
 def fire(data,num_filter,name=None):
@@ -48,22 +48,20 @@ filters = [[16,64,64],
 def get_squeezenet_conv(data):
 
     # stage 1
-    conv = Conv(data, 32, pad=(1,1),kernel=(3, 3), stride=(2, 2), name="conv1")
+    conv = Conv(data, 64 , pad=(1,1),kernel=(3, 3), stride=(2, 2), name="conv1")
     # stage 2
     pool = mx.sym.Pooling(data=conv, pad=(1,1),kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool1")
     # stage 3
     fire2 = fire(pool,filters[0],'fire2')
-    fire3 = fire(fire2,filter[1],'fire3')
-    fire4 = fire(fire3,filter[2],'fire4')
-    pool_fire4 = mx.sym.Pooling(data=fire4, pad=(1,1),kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool4")
+    fire3 = fire(fire2,filters[1],'fire3')
+    pool3  = mx.sym.Pooling(data=fire3, pad=(1,1),kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool3")
     # stage 4
-    fire5 = fire(pool_fire4,filter[3],'fire5')
-    fire6 = fire(fire5,filter[4],'fire6')
-    fire7 = fire(fire6,filter[5],'fire7')
-    fire8 = fire(fire7,filter[6],'fire8')
-    pool_fire4 = mx.sym.Pooling(data=fire8, pad=(1,1),kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool8")
+    fire4 = fire(pool3,filters[2],'fire4')
+    fire5 = fire(fire4,filters[3],'fire5')
+    pool_fire4 = mx.sym.Pooling(data=fire5, pad=(1,1),kernel=(3, 3), stride=(2, 2), pool_type="max", name="pool8")
 
     return pool_fire4
+
 #
 #    in4e = Inception7D(in4d, 192, 320,
 #                       192, 192, 192, 192,
@@ -151,11 +149,15 @@ def get_squeezenet_train(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_
         name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(13, 13), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
 
     # res5
-    fire9 = fire(roi_pool,filters[7],'fire9')
-    conv10 = Conv(fire9,1000,name='conv10')
+    fire6 = fire(roi_pool,filters[4],'fire6')
+    fire7 = fire(fire6,filters[5],'fire7')
+    fire8 = fire(fire7,filters[6],'fire8')
+
+    fire9 = fire(fire8,filters[7],'fire9')
+#    conv10 = Conv(fire9,1000,name='conv10')
 
     # pool
-    pool1 = mx.sym.Pooling(data=conv10, kernel=(13, 13), stride=(1, 1), pool_type="avg", name="global_pool")
+    pool1 = mx.sym.Pooling(data=fire9, kernel=(13, 13), stride=(1, 1), pool_type="avg", name="global_pool")
     flatten = mx.sym.Flatten(data=pool1, name="flatten")
 
     # classification
@@ -217,10 +219,14 @@ def get_squeezenet_test(num_classes=config.NUM_CLASSES, num_anchors=config.NUM_A
         name='roi_pool5', data=conv_feat, rois=rois, pooled_size=(13, 13), spatial_scale=1.0 / config.RCNN_FEAT_STRIDE)
 
     # res5
-    fire9 = fire(roi_pool,filters[7],'fire9')
-    conv10 = Conv(fire9,1000,name='conv10')
+    fire6 = fire(roi_pool,filters[4],'fire6')
+    fire7 = fire(fire6,filters[5],'fire7')
+    fire8 = fire(fire7,filters[6],'fire8')
+
+    fire9 = fire(fire8,filters[7],'fire9')
+#    conv10 = Conv(fire9,1000,name='conv10')
     # pool
-    pool1 = mx.sym.Pooling(data=conv10, kernel=(13, 13), stride=(1, 1), pool_type="avg", name="global_pool")
+    pool1 = mx.sym.Pooling(data=fire9, kernel=(13, 13), stride=(1, 1), pool_type="avg", name="global_pool")
     flatten = mx.sym.Flatten(data=pool1, name="flatten")
 
     # classification

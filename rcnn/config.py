@@ -184,6 +184,16 @@ network.inceptionv3.RCNN_FEAT_STRIDE = 16
 network.inceptionv3.FIXED_PARAMS = ["conv_batchnorm","conv_2_batchnorm","conv_3_batchnorm","conv_4_batchnorm"]
 network.inceptionv3.FIXED_PARAMS_SHARED = ['conv2', 'conv1', 'conv3', 'conv4', 'conv5', 'beta',"batchnorm"]
 
+network.squeezenet = edict()
+network.squeezenet.pretrained = 'model/squeezenet'
+network.squeezenet.pretrained_epoch = 0
+#network.inceptionresnet.PIXEL_MEANS = np.array([0, 0, 0])
+network.squeezenet.IMAGE_STRIDE = 0
+network.squeezenet.RPN_FEAT_STRIDE = 16
+network.squeezenet.RCNN_FEAT_STRIDE = 16
+network.squeezenet.FIXED_PARAMS = ["conv1","conv_2_batchnorm","conv_3_batchnorm","conv_4_batchnorm"]
+network.squeezenet.FIXED_PARAMS_SHARED = ['conv2', 'conv1', 'conv3', 'conv4', 'conv5', 'beta',"batchnorm"]
+
 
 
 # dataset settings

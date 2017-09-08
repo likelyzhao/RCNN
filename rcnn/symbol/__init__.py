@@ -5,3 +5,4 @@ from symbol_resnet152 import *
 from symbol_inceptionv3 import *
 from symbol_resnext import *
 from symbol_resnet_fpn import *
+from symbol_squeezenet import *
