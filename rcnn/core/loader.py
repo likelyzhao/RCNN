@@ -143,21 +143,7 @@ class ROIIter(mx.io.DataIter):
     def reset(self):
         self.cur = 0
         if self.shuffle:
-            if self.aspect_grouping:
-                widths = np.array([r['width'] for r in self.roidb])
-                heights = np.array([r['height'] for r in self.roidb])
-                horz = (widths >= heights)
-                vert = np.logical_not(horz)
-                horz_inds = np.where(horz)[0]
-                vert_inds = np.where(vert)[0]
-                inds = np.hstack((np.random.permutation(horz_inds), np.random.permutation(vert_inds)))
-                extra = inds.shape[0] % self.batch_size
-                inds_ = np.reshape(inds[:-extra], (-1, self.batch_size))
-                row_perm = np.random.permutation(np.arange(inds_.shape[0]))
-                inds[:-extra] = np.reshape(inds_[row_perm, :], (-1,))
-                self.index = inds
-            else:
-                np.random.shuffle(self.index)
+            np.random.shuffle(self.index)
 
     def iter_next(self):
         return self.cur + self.batch_size <= self.size
@@ -360,7 +346,6 @@ class AnchorLoaderFPN(mx.io.DataIter):
             label[self.label_name[3*i]] = temp_dict[self.label_name_simple[0]]
             label[self.label_name[3*i+1]] = temp_dict[self.label_name_simple[1]]
             label[self.label_name[3*i+2]] = temp_dict[self.label_name_simple[2]]
-        # print(label)
         label = [label[k] for k in self.label_name]
         label_shape = [(k, tuple([input_batch_size] + list(v.shape[1:]))) for k, v in zip(self.label_name, label)]
         return max_data_shape, label_shape
@@ -660,7 +645,7 @@ class AnchorLoaderAvaRecordIO(mx.io.DataIter):
         :param aspect_grouping: group images with similar aspects
         :return: AnchorLoader
         """
-        super(AnchorLoader, self).__init__()
+        super(AnchorLoaderAvaRecordIO, self).__init__()
 
         # save parameters as properties
         self.feat_sym = feat_sym
@@ -695,11 +680,14 @@ class AnchorLoaderAvaRecordIO(mx.io.DataIter):
         self.data = None
         self.label = None
 
+        self.classes = classes
+        self.num_classes = len(classes)
+        self.class_to_ind = dict(zip(self.classes, xrange(self.num_classes)))
         # get first batch to fill in provide_data and provide_label
         self.reset()
         self.get_batch()
-        self.classes = classes
-        self._class_to_ind = dict(zip(self.classes, xrange(self.num_classes)))
+        while self.label[0] is None:
+            self.get_batch() 
 
     @property
     def provide_data(self):
@@ -708,25 +696,13 @@ class AnchorLoaderAvaRecordIO(mx.io.DataIter):
     @property
     def provide_label(self):
         return [(k, v.shape) for k, v in zip(self.label_name, self.label)]
+    def provide_size(self):
+        return  self.size
 
     def reset(self):
         self.cur = 0
         if self.shuffle:
-            if self.aspect_grouping:
-                widths = np.array([r['width'] for r in self.roidb])
-                heights = np.array([r['height'] for r in self.roidb])
-                horz = (widths >= heights)
-                vert = np.logical_not(horz)
-                horz_inds = np.where(horz)[0]
-                vert_inds = np.where(vert)[0]
-                inds = np.hstack((np.random.permutation(horz_inds), np.random.permutation(vert_inds)))
-                extra = inds.shape[0] % self.batch_size
-                inds_ = np.reshape(inds[:-extra], (-1, self.batch_size))
-                row_perm = np.random.permutation(np.arange(inds_.shape[0]))
-                inds[:-extra] = np.reshape(inds_[row_perm, :], (-1,))
-                self.index = inds
-            else:
-                np.random.shuffle(self.index)
+            np.random.shuffle(self.index)
 
     def iter_next(self):
         return self.cur + self.batch_size <= self.size
@@ -787,7 +763,7 @@ class AnchorLoaderAvaRecordIO(mx.io.DataIter):
         label_list = []
         for islice in slices:
             iroidb = [roidb[i] for i in range(islice.start, islice.stop)]
-            data, label = get_rpn_batch_from_recordio(iroidb, self._class_to_ind, self.use_data_augmentation)
+            data, label = get_rpn_batch_from_recordio(iroidb, self.class_to_ind, self.use_data_augmentation)
             data_list.append(data)
             label_list.append(label)
 

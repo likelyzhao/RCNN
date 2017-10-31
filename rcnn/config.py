@@ -12,7 +12,7 @@ config.FIXED_PARAMS = ['conv1', 'conv2']
 config.FIXED_PARAMS_SHARED = ['conv1', 'conv2', 'conv3', 'conv4', 'conv5']
 
 # dataset related params
-config.NUM_CLASSES = 21
+config.NUM_CLASSES = 31
 config.SCALES = [(600, 1000)]  # first is scale (the shorter side); second is max size
 #config.ANCHOR_SCALES = (16,)  # set when training fpn
 config.ANCHOR_SCALES = (8, 16, 32)

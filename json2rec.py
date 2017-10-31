@@ -25,6 +25,9 @@ def main():
     for line in f.readlines():
         import json
         dict = json.loads(line)
+        if  len(dict['label']['detect']['general_d']['bbox']) == 0:
+            print("miss")
+            continue
         import urllib2
         try:
             buf = urllib2.urlopen(dict['url'].strip(),timeout=10).read()

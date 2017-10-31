@@ -65,10 +65,10 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
         f = open(args.classes_names)
         classes =['__background__']
         for line in f.readlines():
-            classes.append(line.split(' ')[0])
+            classes.append(line.strip().split(' ')[0])
 
-        path_imgidx = os.path.join(args.dataset_path, args.ava_recordio_name, '.idx')
-        path_imgrec = os.path.join(args.dataset_path, args.ava_recordio_name, '.rec')
+        path_imgidx = args.ava_recordio_name + '.idx'
+        path_imgrec = args.ava_recordio_name + '.rec'
 
         record = mx.recordio.MXIndexedRecordIO(path_imgidx, path_imgrec,'r')  # pylint: disable=redefined-variable-type
 
@@ -172,7 +172,10 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
     lr_epoch = [int(epoch) for epoch in lr_step.split(',')]
     lr_epoch_diff = [epoch - begin_epoch for epoch in lr_epoch if epoch > begin_epoch]
     lr = base_lr * (lr_factor ** (len(lr_epoch) - len(lr_epoch_diff)))
-    lr_iters = [int(epoch * len(roidb) / batch_size) for epoch in lr_epoch_diff]
+    if not args.use_ava_recordio:
+        lr_iters = [int(epoch * len(roidb) / batch_size) for epoch in lr_epoch_diff]
+    else:
+        lr_iters = [int(epoch * train_data.provide_size() / batch_size) for epoch in lr_epoch_diff]
     print('lr', lr, 'lr_epoch_diff', lr_epoch_diff, 'lr_iters', lr_iters)
     lr_scheduler = mx.lr_scheduler.MultiFactorScheduler(lr_iters, lr_factor)
     # optimizer

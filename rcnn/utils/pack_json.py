@@ -10,26 +10,21 @@ def jsonPack(annotation,s):
     import base64
     import gzip
     import StringIO
-    print(len(s))
     compressedstream = StringIO.StringIO()
     gzipper = gzip.GzipFile(fileobj=compressedstream,mode="wb")
     gzipper.write(s)  # data就是解压后的数据
     gzipper.close()
 
     import  zlib
-    print('zlib')
     d = zlib.compress(s)
-    print(len(d))
 
     s = compressedstream.getvalue()
-    print (len(compressedstream.getvalue()))
 #    dict['img'] =base64.b64encode(s)
 
 
 
     dict['img'] = base64.b64encode(s)
     s = json.dumps(dict,ensure_ascii=False)
-    print(len(s))
 #    s = struct.pack('p', annotation) + s
     return s
 

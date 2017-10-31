@@ -74,7 +74,7 @@ def get_rpn_batch_from_recordio(IOitem, class_to_ind,use_data_augmentation = Fal
     """
     assert len(IOitem) == 1, 'Single batch only'
 
-    anno, img = jsonUnpack(IOitem)
+    anno, img = jsonUnpack(IOitem[0])
     import cv2
     import random
     import json
@@ -89,20 +89,23 @@ def get_rpn_batch_from_recordio(IOitem, class_to_ind,use_data_augmentation = Fal
     im_tensor = transform(im_array, config.PIXEL_MEANS)
 
     im_info = [im_tensor.shape[2], im_tensor.shape[3], im_scale]
+    im_info = np.array([im_info], dtype=np.float32)
 
-    roi_rec =json.dumps(anno)
-    roi_rec['label']['detect']['general_d']['bbox']
-    if roi_rec.size > 0:
+    roi_rec =json.loads(anno)
+    roi_rec = roi_rec['label']['detect']['general_d']['bbox']
+    if len(roi_rec) > 0:
         gt_boxes = np.empty((len(roi_rec), 5), dtype=np.float32)
         for idx, bbox in enumerate(roi_rec):
             bbox['pts'][0]
-            gt_boxes[idx, 0:2] = bbox['pts'][0]* im_scale
-            gt_boxes[idx, 2:4] = bbox['pts'][2]* im_scale
+            gt_boxes[idx, 0] = bbox['pts'][0][0]* im_scale
+            gt_boxes[idx, 1] = bbox['pts'][0][1]* im_scale
+            gt_boxes[idx, 2] = bbox['pts'][2][0]* im_scale
+            gt_boxes[idx, 3] = bbox['pts'][2][1]* im_scale
             gt_boxes[idx, 4] = class_to_ind[bbox['class']]
     else:
         gt_boxes = np.empty((0, 5), dtype=np.float32)
 
-    data = {'data': im_array,
+    data = {'data': im_tensor,
             'im_info': im_info}
     label = {'gt_boxes': gt_boxes}
 
