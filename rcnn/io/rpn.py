@@ -18,7 +18,8 @@ from ..config import config
 from .image import get_image, tensor_vstack
 from ..processing.generate_anchor import generate_anchors
 from ..processing.bbox_transform import bbox_overlaps, bbox_transform
-
+from ..utils.pack_json import jsonUnpack
+from ..io.image import img_transform,resize,transform
 
 def get_rpn_testbatch(roidb):
     """
@@ -63,6 +64,50 @@ def get_rpn_batch(roidb, use_data_augmentation = False):
     label = {'gt_boxes': gt_boxes}
 
     return data, label
+
+
+def get_rpn_batch_from_recordio(IOitem, class_to_ind,use_data_augmentation = False):
+    """
+    prototype for rpn batch: data, im_info, gt_boxes
+    :param roidb: ['image', 'flipped'] + ['gt_boxes', 'boxes', 'gt_classes']
+    :return: data, label
+    """
+    assert len(IOitem) == 1, 'Single batch only'
+
+    anno, img = jsonUnpack(IOitem)
+    import cv2
+    import random
+    import json
+    im_array = cv2.imdecode(np.fromstring(img, dtype=np.uint8),-1)
+
+    if use_data_augmentation:
+        im_array, _ = img_transform(im_array, None)
+    scale_ind = random.randrange(len(config.SCALES))
+    target_size = config.SCALES[scale_ind][0]
+    max_size = config.SCALES[scale_ind][1]
+    im_array, im_scale = resize(im_array, target_size, max_size, stride=config.IMAGE_STRIDE)
+    im_tensor = transform(im_array, config.PIXEL_MEANS)
+
+    im_info = [im_tensor.shape[2], im_tensor.shape[3], im_scale]
+
+    roi_rec =json.dumps(anno)
+    roi_rec['label']['detect']['general_d']['bbox']
+    if roi_rec.size > 0:
+        gt_boxes = np.empty((len(roi_rec), 5), dtype=np.float32)
+        for idx, bbox in enumerate(roi_rec):
+            bbox['pts'][0]
+            gt_boxes[idx, 0:2] = bbox['pts'][0]* im_scale
+            gt_boxes[idx, 2:4] = bbox['pts'][2]* im_scale
+            gt_boxes[idx, 4] = class_to_ind[bbox['class']]
+    else:
+        gt_boxes = np.empty((0, 5), dtype=np.float32)
+
+    data = {'data': im_array,
+            'im_info': im_info}
+    label = {'gt_boxes': gt_boxes}
+
+    return data, label
+
 
 
 def assign_anchor(feat_shape, gt_boxes, im_info, feat_stride=16,

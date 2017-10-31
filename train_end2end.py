@@ -4,11 +4,12 @@ import logging
 import pprint
 import mxnet as mx
 import numpy as np
+import os
 
 from rcnn.config import config, default, generate_config
 from rcnn.symbol import *
 from rcnn.core import callback, metric
-from rcnn.core.loader import AnchorLoader
+from rcnn.core.loader import AnchorLoader,AnchorLoaderAvaRecordIO
 from rcnn.core.module import MutableModule
 from rcnn.utils.load_data import load_gt_roidb, merge_roidb, filter_roidb
 from rcnn.utils.load_model import load_param
@@ -45,20 +46,38 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
     # print config
     pprint.pprint(config)
 
-    # load dataset and prepare imdb for training
-    image_sets = [iset for iset in args.image_set.split('+')]
-    roidbs = [load_gt_roidb(args.dataset, image_set, args.root_path, args.dataset_path,
-                            flip=not args.no_flip)
-              for image_set in image_sets]
-    roidb = merge_roidb(roidbs)
-    roidb = filter_roidb(roidb)
+    if not args.use_ava_recordio:
+        # load dataset and prepare imdb for training
+        image_sets = [iset for iset in args.image_set.split('+')]
+        roidbs = [load_gt_roidb(args.dataset, image_set, args.root_path, args.dataset_path,
+                                flip=not args.no_flip)
+                  for image_set in image_sets]
+        roidb = merge_roidb(roidbs)
+        roidb = filter_roidb(roidb)
 
-    # load training data
-    train_data = AnchorLoader(feat_sym, roidb, batch_size=input_batch_size, shuffle=not args.no_shuffle,
-                              ctx=ctx, work_load_list=args.work_load_list,
-                              feat_stride=config.RPN_FEAT_STRIDE, anchor_scales=config.ANCHOR_SCALES,
-                              anchor_ratios=config.ANCHOR_RATIOS, aspect_grouping=config.TRAIN.ASPECT_GROUPING,
-                              use_data_augmentation=args.use_data_augmentation)
+        # load training data
+        train_data = AnchorLoader(feat_sym, roidb, batch_size=input_batch_size, shuffle=not args.no_shuffle,
+                                  ctx=ctx, work_load_list=args.work_load_list,
+                                  feat_stride=config.RPN_FEAT_STRIDE, anchor_scales=config.ANCHOR_SCALES,
+                                  anchor_ratios=config.ANCHOR_RATIOS, aspect_grouping=config.TRAIN.ASPECT_GROUPING,
+                                  use_data_augmentation=args.use_data_augmentation)
+    else:
+        f = open(args.classes_names)
+        classes =['__background__']
+        for line in f.readlines():
+            classes.append(line.split(' ')[0])
+
+        path_imgidx = os.path.join(args.dataset_path, args.ava_recordio_name, '.idx')
+        path_imgrec = os.path.join(args.dataset_path, args.ava_recordio_name, '.rec')
+
+        record = mx.recordio.MXIndexedRecordIO(path_imgidx, path_imgrec,'r')  # pylint: disable=redefined-variable-type
+
+        train_data = AnchorLoaderAvaRecordIO(feat_sym, record, classes, batch_size=input_batch_size, shuffle=not args.no_shuffle,
+                                  ctx=ctx, work_load_list=args.work_load_list,
+                                  feat_stride=config.RPN_FEAT_STRIDE, anchor_scales=config.ANCHOR_SCALES,
+                                  anchor_ratios=config.ANCHOR_RATIOS, aspect_grouping=config.TRAIN.ASPECT_GROUPING,
+                                  use_data_augmentation=args.use_data_augmentation)
+
 
     # infer max shape
     max_data_shape = [('data', (input_batch_size, 3, max([v[0] for v in config.SCALES]), max([v[1] for v in config.SCALES])))]
@@ -91,6 +110,7 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch,
         arg_params['cls_score_bias'] = mx.nd.zeros(shape=arg_shape_dict['cls_score_bias'])
         arg_params['bbox_pred_weight'] = mx.random.normal(0, 0.001, shape=arg_shape_dict['bbox_pred_weight'])
         arg_params['bbox_pred_bias'] = mx.nd.zeros(shape=arg_shape_dict['bbox_pred_bias'])
+
     if args.use_global_context:
         # additional params for using global context
         """
@@ -201,6 +221,9 @@ def parse_args():
     parser.add_argument('--use_data_augmentation', help='randomly transform image in color, brightness, contrast, sharpness',\
                         action='store_true')
     parser.add_argument('--use_roi_align', help='replace ROIPooling with ROIAlign', action='store_true')
+    parser.add_argument('--use_ava_recordio', help='using ava json annotation with recordio', action='store_true')
+    parser.add_argument('--ava_recordio_name', help='recordio name should in dataset_path',type=str)
+    parser.add_argument('--classes_names', help='path of classes names one name per classes', type=str,default=default.classes_name)
 
     args = parser.parse_args()
     return args

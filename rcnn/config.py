@@ -125,6 +125,7 @@ default.rcnn_prefix = 'model/rcnn'
 default.rcnn_epoch = 8
 default.rcnn_lr = default.base_lr
 default.rcnn_lr_step = '6'
+default.classes_name = 'labels.csv'
 
 # network settings
 network = edict()
